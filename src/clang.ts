@@ -22,6 +22,11 @@ export class ClangPlugin extends cobble.BasePlugin {
         watcher: cobble.BaseWatcher,
         settings: cobble.BuildSettings,
     ): Promise<cobble.ResetPluginWatchedFilesFn> {
+        const srcs = this.filterSrcs(settings);
+        if (srcs.length == 0) {
+            return () => {};
+        }
+
         const includes = await this._listIncludesForAllFiles(settings);
         const cleanupFns = [...includes.entries()].map(([srcStr, hdrs]) => {
             const src = cobble.ResolvedPath.absolute(srcStr);
@@ -98,7 +103,7 @@ export class ClangPlugin extends cobble.BasePlugin {
     async _listIncludesForAllFiles(settings: cobble.BuildSettings): Promise<Map<string, cobble.ResolvedPath[]>> {
         const includes = new Map<string, cobble.ResolvedPath[]>();
 
-        const srcs = settings.srcs.filter(src => src.protocol == this.name()).map(src => src.path);
+        const srcs = this.filterSrcs(settings).map(src => src.path);
         const args = this._generateArgs(settings, undefined, srcs, false, false);
         args.push('-MM');
 
@@ -186,9 +191,7 @@ export class ClangPlugin extends cobble.BasePlugin {
             ...this._generateArgs(
                 settings,
                 this._getOutputPath(settings),
-                settings.srcs
-                    .filter(src => src.protocol == this.name())
-                    .map(src => this._getObjectFilePath(settings, src)),
+                this.filterSrcs(settings).map(src => this._getObjectFilePath(settings, src)),
                 true,
                 settings.target === 'win32',
             ),
