@@ -174,7 +174,7 @@ export class ClangPlugin extends cobble.BasePlugin {
         const obj = this._getObjectFilePath(settings, src);
 
         const args: string[] = [];
-        args.push(...this._platformArgs(settings, settings.target === 'win32'));
+        args.push(...this._platformArgs(settings, false, settings.target === 'win32'));
         args.push(...this._generateArgs(settings, obj, [src], false, settings.target === 'win32'));
 
         await cobble.mkdir(obj.dirname());
@@ -186,7 +186,7 @@ export class ClangPlugin extends cobble.BasePlugin {
 
     async _link(settings: cobble.BuildSettings): Promise<void> {
         const args: string[] = [];
-        args.push(...this._platformArgs(settings, settings.target === 'win32'));
+        args.push(...this._platformArgs(settings, true, settings.target === 'win32'));
         args.push(
             ...this._generateArgs(
                 settings,
@@ -204,13 +204,16 @@ export class ClangPlugin extends cobble.BasePlugin {
         const result = await cobble.spawn(cc, args, { stdio: 'inherit' });
     }
 
-    private _platformArgs(settings: cobble.BuildSettings, clangClExe: boolean): string[] {
+    private _platformArgs(settings: cobble.BuildSettings, link: boolean, clangClExe: boolean): string[] {
         const args: string[] = [];
 
         if (!clangClExe) {
             switch (settings.target) {
                 case 'wasm':
-                    args.push('--target=wasm32-unknown-unknown', '-Xlinker', '--no-entry', '-nostdlib');
+                    args.push('--target=wasm32-unknown-unknown', '-nostdlib');
+                    if (link) {
+                        args.push('-Xlinker', '--no-entry');
+                    }
                     args.push('-mmultivalue', '-Xclang', '-target-abi', '-Xclang', 'experimental-mv');
                     args.push('-msimd128');
                     args.push('-mtail-call');

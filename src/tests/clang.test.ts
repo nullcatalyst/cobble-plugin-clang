@@ -21,7 +21,7 @@ describe('clang plugin', () => {
         await fs.promises.writeFile(cppFilePath.toString(), '#include "hdr.h"');
         await fs.promises.writeFile(hdrFilePath.toString(), 'int function_name();');
 
-        const watcher = new cobble.FakeWatcher();
+        const watcher = new cobble.FakeWatcher(0);
         const plugin = new ClangPlugin({ 'tmp': basePath.join('tmp'), 'verbose': 0 });
         const settings = await cobble.BuildSettings.from(
             {
@@ -52,7 +52,7 @@ describe('clang plugin', () => {
         await fs.promises.writeFile(cppFilePath.toString(), '#include "hdr.h"');
         await fs.promises.writeFile(hdrFilePath.toString(), 'int zero() {return 0;}');
 
-        const watcher = new cobble.FakeWatcher();
+        const watcher = new cobble.FakeWatcher(0);
         const plugin = new ClangPlugin({ 'tmp': basePath.join('tmp'), 'verbose': 0 });
         const settings = await cobble.BuildSettings.from<{ clang: ClangSettings }>(
             {
