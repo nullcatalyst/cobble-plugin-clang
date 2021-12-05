@@ -5,7 +5,8 @@ export type ClangSettings = Partial<{
     'std': 11 | 14 | 17 | 20 | '2a';
     'includes': string[];
     'libs': string[];
-    'flags': string[];
+    'cflags': string[];
+    'ldflags': string[];
     'defines': string[];
 }>;
 
@@ -241,7 +242,8 @@ export class ClangPlugin extends cobble.BasePlugin {
         const includes = pluginSettings['includes'] ?? [];
         const libs = pluginSettings['libs'] ?? [];
         const defines = pluginSettings['defines'] ?? [];
-        const flags = pluginSettings['flags'] ?? [];
+        const cflags = pluginSettings['cflags'] ?? [];
+        const ldflags = pluginSettings['ldflags'] ?? [];
 
         if (clangClExe) {
             if (output != null) {
@@ -269,7 +271,11 @@ export class ClangPlugin extends cobble.BasePlugin {
                 }
             }
 
-            args.push(...flags);
+            if (link) {
+                args.push(...ldflags);
+            } else {
+                args.push(...cflags);
+            }
 
             if (type === 'dll') {
                 args.push('/link', '/DLL');
@@ -295,7 +301,11 @@ export class ClangPlugin extends cobble.BasePlugin {
                 libs.forEach(lib => args.push('-l', lib));
             }
 
-            args.push(...flags);
+            if (link) {
+                args.push(...ldflags);
+            } else {
+                args.push(...cflags);
+            }
         }
 
         return args;
