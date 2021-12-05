@@ -5,6 +5,7 @@
     "main": "lib/index.js",
     "scripts": {
         "build": "tsc",
+        "preinstall": "npm run build",
         "test": "mocha --require ts-node/register --extensions ts 'src/tests/**/*.ts'"
     },
     "repository": {
