@@ -261,17 +261,15 @@ export class ClangPlugin extends cobble.BasePlugin {
                 args.push('/c');
             }
 
-            includes.forEach(inc => args.push('/I', inc.toString()));
+            includes.forEach(inc => args.push('/I', settings.basePath.join(inc).toString()));
             defines.forEach(def => args.push(`/D${def}`));
 
             if (srcs.length > 0) {
                 args.push(...srcs.map(src => src.toString()));
-                if (type === 'exe') {
-                    args.push(...libs);
-                }
             }
 
             if (link) {
+                args.push(...libs.map(lib => settings.basePath.join(lib).toString()));
                 args.push(...ldflags);
             } else {
                 args.push(...cflags);
@@ -293,15 +291,15 @@ export class ClangPlugin extends cobble.BasePlugin {
                 args.push('-c');
             }
 
-            includes.forEach(inc => args.push('-I', inc.toString()));
+            includes.forEach(inc => args.push('-I', settings.basePath.join(inc).toString()));
             defines.forEach(def => args.push('-D', def));
 
             if (srcs.length > 0) {
                 args.push(...srcs.map(src => src.toString()));
-                libs.forEach(lib => args.push('-l', lib));
             }
 
             if (link) {
+                libs.forEach(lib => args.push('-l', settings.basePath.join(lib).toString()));
                 args.push(...ldflags);
             } else {
                 args.push(...cflags);
