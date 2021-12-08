@@ -81,8 +81,8 @@ describe('clang plugin', () => {
     });
 
     it('should find and watch included header files', async () => {
-        const { path: dirPath, cleanup } = await tmp.dir({ unsafeCleanup: true });
-        defer.push(cleanup);
+        const { path: dirPath, cleanup: dirCleanup } = await tmp.dir({ unsafeCleanup: true });
+        defer.push(dirCleanup);
 
         const basePath = cobble.ResolvedPath.absolute(dirPath);
         const hdrFilePath = basePath.join('hdr.h');
@@ -112,5 +112,33 @@ describe('clang plugin', () => {
             cppFileIncludes.map(hdr => hdr.toString()),
             [hdrFilePath.toString()],
         );
+    });
+
+    it('should not crash on compile failure', async () => {
+        const { path: dirPath, cleanup: dirCleanup } = await tmp.dir({ unsafeCleanup: true });
+        defer.push(dirCleanup);
+
+        const basePath = cobble.ResolvedPath.absolute(dirPath);
+        const cppFilePath = basePath.join('src.cpp');
+        await fs.promises.writeFile(cppFilePath.toString(), '{');
+
+        const watcher = new cobble.FakeWatcher(0);
+        const plugin = new ClangPlugin({ 'tmp': basePath, 'verbose': 0 });
+        const settings = await cobble.BuildSettings.from(
+            {
+                'name': 'test',
+                'srcs': [`${plugin.name()}:${cppFilePath.toString()}`],
+            },
+            {
+                'basePath': cobble.ResolvedPath.absolute(dirPath),
+                'release': false,
+                'target': 'linux',
+                'pluginNames': [plugin.name()],
+            },
+        );
+
+        const cleanup = await plugin.process(watcher, settings);
+        await watcher.emit(new cobble.Event(cobble.EventType.AddFile, cppFilePath));
+        cleanup();
     });
 });

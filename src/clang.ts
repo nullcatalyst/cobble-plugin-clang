@@ -120,34 +120,41 @@ export class ClangPlugin extends cobble.BasePlugin {
         const includes = new Map<string, cobble.ResolvedPath[]>();
 
         const srcs = this.filterSrcs(settings).map(src => src.path);
-        const args = this._generateArgs(settings, undefined, srcs, false, false);
-        args.push('-MM');
 
-        const cc = settings.target === 'win32' ? 'clang.exe' : 'clang';
-        this.log(3, cc, ...args);
-        const result = await cobble.spawn(cc, args);
-        result.stdout
-            .replaceAll('\r', '')
-            .replaceAll('\\\n', ' ')
-            .split('\n')
-            .filter(line => line)
-            .forEach(line => {
-                const index = line.indexOf(':');
-                if (index < 0) {
-                    throw new Error('make file has invalid format');
-                }
+        try {
+            const args = this._generateArgs(settings, undefined, srcs, false, false);
+            args.push('-MM');
 
-                const [src, ...hdrs] = line
-                    .slice(index + 1)
-                    .trim()
-                    .split(/\s+/);
+            const cc = settings.target === 'win32' ? 'clang.exe' : 'clang';
+            this.log(3, cc, ...args);
+            const result = await cobble.spawn(cc, args);
+            result.stdout
+                .replaceAll('\r', '')
+                .replaceAll('\\\n', ' ')
+                .split('\n')
+                .filter(line => line)
+                .forEach(line => {
+                    const index = line.indexOf(':');
+                    if (index < 0) {
+                        throw new Error('make file has invalid format');
+                    }
 
-                const basePath = settings.basePath;
-                includes.set(
-                    basePath.join(src).toString(),
-                    hdrs.map(hdr => basePath.join(hdr)),
-                );
-            });
+                    const [src, ...hdrs] = line
+                        .slice(index + 1)
+                        .trim()
+                        .split(/\s+/);
+
+                    const basePath = settings.basePath;
+                    includes.set(
+                        basePath.join(src).toString(),
+                        hdrs.map(hdr => basePath.join(hdr)),
+                    );
+                });
+        } catch (err) {
+            for (const src of srcs) {
+                includes.set(src.toString(), []);
+            }
+        }
 
         return includes;
     }
@@ -156,32 +163,37 @@ export class ClangPlugin extends cobble.BasePlugin {
         src: cobble.ResolvedPath,
         settings: cobble.BuildSettings,
     ): Promise<cobble.ResolvedPath[]> {
-        let includes: cobble.ResolvedPath[] = [];
-        const args = this._generateArgs(settings, undefined, [src], false, false);
-        args.push('-MM');
+        let includes: cobble.ResolvedPath[];
 
-        const cc = settings.target === 'win32' ? 'clang.exe' : 'clang';
-        this.log(3, cc, ...args);
-        const result = await cobble.spawn(cc, args);
-        result.stdout
-            .replaceAll('\r', '')
-            .replaceAll('\\\n', ' ')
-            .split('\n')
-            .filter(line => line)
-            .forEach(line => {
-                const index = line.indexOf(':');
-                if (index < 0) {
-                    throw new Error('make file has invalid format');
-                }
+        try {
+            const args = this._generateArgs(settings, undefined, [src], false, false);
+            args.push('-MM');
 
-                const [src, ...hdrs] = line
-                    .slice(index + 1)
-                    .trim()
-                    .split(/\s+/);
+            const cc = settings.target === 'win32' ? 'clang.exe' : 'clang';
+            this.log(3, cc, ...args);
+            const result = await cobble.spawn(cc, args);
+            result.stdout
+                .replaceAll('\r', '')
+                .replaceAll('\\\n', ' ')
+                .split('\n')
+                .filter(line => line)
+                .forEach(line => {
+                    const index = line.indexOf(':');
+                    if (index < 0) {
+                        throw new Error('make file has invalid format');
+                    }
 
-                const basePath = settings.basePath;
-                includes = hdrs.map(hdr => basePath.join(hdr));
-            });
+                    const [src, ...hdrs] = line
+                        .slice(index + 1)
+                        .trim()
+                        .split(/\s+/);
+
+                    const basePath = settings.basePath;
+                    includes = hdrs.map(hdr => basePath.join(hdr));
+                });
+        } catch (err) {
+            includes = [];
+        }
 
         return includes;
     }
