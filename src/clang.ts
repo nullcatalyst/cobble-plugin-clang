@@ -96,6 +96,9 @@ export class ClangPlugin extends cobble.BasePlugin {
                     }
 
                     await this._link(settings);
+                    await watcher.emit(
+                        new cobble.Event(cobble.EventType.BuildFile, this._getOutputPath(settings), event.timestamp),
+                    );
                 }),
             );
 
