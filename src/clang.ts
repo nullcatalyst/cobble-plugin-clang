@@ -166,7 +166,7 @@ export class ClangPlugin extends cobble.BasePlugin {
         src: cobble.ResolvedPath,
         settings: cobble.BuildSettings,
     ): Promise<cobble.ResolvedPath[]> {
-        let includes: cobble.ResolvedPath[];
+        let includes: cobble.ResolvedPath[] = [];
 
         try {
             const args = this._generateArgs(settings, undefined, [src], false, false);
@@ -195,7 +195,7 @@ export class ClangPlugin extends cobble.BasePlugin {
                     includes = hdrs.map(hdr => basePath.join(hdr));
                 });
         } catch (err) {
-            includes = [];
+            this.log(1, `Failed to list includes for "${src}": ${err}`);
         }
 
         return includes;

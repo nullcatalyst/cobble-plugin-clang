@@ -1,11 +1,11 @@
 {
     "name": "cobble-plugin-clang",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "description": "",
     "main": "lib/index.js",
     "scripts": {
         "build": "tsc",
-        "preinstall": "npm run build",
+        "install": "npm run build",
         "test": "mocha --require ts-node/register --extensions ts 'src/tests/**/*.ts'"
     },
     "repository": {
