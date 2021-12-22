@@ -31,6 +31,16 @@ export class ClangPlugin extends cobble.BasePlugin {
         // Store the count of successfully compiled files
         // This is used to prevent attempting to link prior to all files being compiled at least once
         let compiledCount = 0;
+        const link = cobble.createMailbox(async event => {
+            if (compiledCount < srcs.length) {
+                return;
+            }
+
+            await this._link(settings);
+            await watcher.emit(
+                new cobble.Event(cobble.EventType.BuildFile, this._getOutputPath(settings), event.timestamp),
+            );
+        });
 
         const includes = await this._listIncludesForAllFiles(settings);
         const cleanupFns = [...includes.entries()].map(([srcStr, hdrs]) => {
@@ -58,16 +68,6 @@ export class ClangPlugin extends cobble.BasePlugin {
                 }
 
                 await watcher.emit(new cobble.Event(cobble.EventType.BuildFile, obj, event.timestamp));
-            });
-            const link = cobble.createMailbox(async event => {
-                if (compiledCount < srcs.length) {
-                    return;
-                }
-
-                await this._link(settings);
-                await watcher.emit(
-                    new cobble.Event(cobble.EventType.BuildFile, this._getOutputPath(settings), event.timestamp),
-                );
             });
 
             // Watch the header files that the source file includes
