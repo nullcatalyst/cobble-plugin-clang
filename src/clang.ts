@@ -37,70 +37,54 @@ export class ClangPlugin extends cobble.BasePlugin {
             const src = cobble.ResolvedPath.absolute(srcStr);
             const obj = this._getObjectFilePath(settings, src);
 
+            let compiledOnce = false;
+            const compile = cobble.createMailbox(async event => {
+                if (event.type === cobble.EventType.DeleteFile) {
+                    return;
+                }
+
+                // Remove the existing headers
+                for (const cleanupWatchHdr of cleanupWatchHdrs) {
+                    cleanupWatchHdr();
+                }
+                cleanupWatchHdrs.length = 0;
+
+                watchHdrs(await this._listIncludesForSingleFile(src, settings));
+                await this._compile(src, settings);
+
+                if (!compiledOnce) {
+                    compiledOnce = true;
+                    compiledCount += 1;
+                }
+
+                await watcher.emit(new cobble.Event(cobble.EventType.BuildFile, obj, event.timestamp));
+            });
+            const link = cobble.createMailbox(async event => {
+                if (compiledCount < srcs.length) {
+                    return;
+                }
+
+                await this._link(settings);
+                await watcher.emit(
+                    new cobble.Event(cobble.EventType.BuildFile, this._getOutputPath(settings), event.timestamp),
+                );
+            });
+
             // Watch the header files that the source file includes
             let cleanupWatchHdrs: (() => void)[] = [];
             const watchHdrs = (hdrs: cobble.ResolvedPath[]) => {
                 for (const hdr of hdrs) {
-                    const cleanupWatchHdr = watcher.add(
-                        hdr,
-                        cobble.createMailbox(async event => {
-                            // if (event.type === EventType.DeleteFile) {
-                            //     cleanup();
-                            //     return;
-                            // }
-
-                            await this._compile(src, settings);
-                            await watcher.emit(new cobble.Event(cobble.EventType.BuildFile, obj, event.timestamp));
-                        }),
-                    );
+                    const cleanupWatchHdr = watcher.add(hdr, compile);
                     cleanupWatchHdrs.push(cleanupWatchHdr);
                 }
             };
-
             watchHdrs(hdrs);
 
             // Watch the source file directly
-            let compiledOnce = false;
-            const cleanupWatchSrc = watcher.add(
-                src,
-                cobble.createMailbox(async event => {
-                    // Remove the existing headers
-                    for (const cleanupWatchHdr of cleanupWatchHdrs) {
-                        cleanupWatchHdr();
-                    }
-                    cleanupWatchHdrs.length = 0;
-
-                    if (event.type === cobble.EventType.DeleteFile) {
-                        // cleanupWatchSrc();
-                        return;
-                    }
-
-                    watchHdrs(await this._listIncludesForSingleFile(src, settings));
-                    await this._compile(src, settings);
-
-                    if (!compiledOnce) {
-                        compiledOnce = true;
-                        compiledCount += 1;
-                    }
-
-                    await watcher.emit(new cobble.Event(cobble.EventType.BuildFile, obj, event.timestamp));
-                }),
-            );
+            const cleanupWatchSrc = watcher.add(src, compile);
 
             // Watch the object file and re-link when it changes
-            const cleanupWatchObj = watcher.add(
-                obj,
-                cobble.createMailbox(async event => {
-                    if (compiledCount < srcs.length) {
-                        return;
-                    }
-
-                    await this._link(settings);
-                    await watcher.emit(
-                        new cobble.Event(cobble.EventType.BuildFile, this._getOutputPath(settings), event.timestamp),
-                    );
-                }),
-            );
+            const cleanupWatchObj = watcher.add(obj, link);
 
             return () => {
                 cleanupWatchObj();
